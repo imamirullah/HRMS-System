@@ -1,19 +1,15 @@
-from mongoengine import Document, StringField, DateField, DateTimeField
+from mongoengine import Document, ReferenceField, DateField, StringField, DateTimeField
 from django.utils.timezone import now
+from employees.models import Employee
 
 class Attendance(Document):
-    employee_id = StringField(required=True, null=False)
+    employee = ReferenceField(Employee, required=True)
     date = DateField(required=True)
-    status = StringField(choices=["Present", "Absent"], default="Present")
+    status = StringField(required=True, choices=("Present", "Absent"))
     created_at = DateTimeField(default=now)
 
     meta = {
-        "collection": "attendance",
         "indexes": [
-            {
-                "fields": ["employee_id", "date"],
-                "unique": True,
-                "sparse": True  # 🔥 prevents NULL duplicate issue forever
-            }
+            {"fields": ("employee", "date"), "unique": True}
         ]
     }
