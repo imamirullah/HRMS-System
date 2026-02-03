@@ -78,14 +78,15 @@ DATABASES = {
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
 
-if MONGO_DB_NAME and MONGO_DB_URL:
-    connect(
-        db=MONGO_DB_NAME,
-        host=MONGO_DB_URL,
-        uuidRepresentation="standard",
-    )
-else:
-    print("⚠️ MongoDB ENV variables not set")
+if not MONGO_DB_NAME or not MONGO_DB_URL:
+    raise Exception("❌ MongoDB ENV variables not set")
+
+connect(
+    db=MONGO_DB_NAME,
+    host=MONGO_DB_URL,
+    alias="default",          # 🔥 THIS IS THE KEY LINE
+    uuidRepresentation="standard"
+)
 
 # =========================
 # Django REST Framework (JSON only)
