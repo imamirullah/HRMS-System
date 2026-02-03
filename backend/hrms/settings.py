@@ -22,14 +22,7 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 # =========================
 
 INSTALLED_APPS = [
-    "django.contrib.contenttypes",
-    "django.contrib.staticfiles",
-
-    "corsheaders",
-    "rest_framework",
-
-    "employees",
-    "attendance",
+    # Django default apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -37,13 +30,14 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
+    # Third-party apps
     "corsheaders",
+    "rest_framework",
+
+    # Your apps
+    "employees",
+    "attendance",
 ]
-
-# =========================
-# Middleware
-# =========================
-
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -54,6 +48,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
 
 
 CORS_ALLOW_ALL_ORIGINS = True
