@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from mongoengine import connect
 
 # =========================
-# Load environment variables
+# Load .env if present (optional)
 # =========================
 load_dotenv()
 
@@ -14,17 +14,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Core Settings
 # =========================
 SECRET_KEY = os.getenv("SECRET_KEY", "unsafe-secret-key")
-
 DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
-# Render + local safe
-ALLOWED_HOSTS = ["*"]  # OK for now, restrict later
+ALLOWED_HOSTS = ["*"]  # OK for now
 
 # =========================
 # Applications
 # =========================
 INSTALLED_APPS = [
-    # Django default apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -32,11 +29,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # Third-party apps
     "corsheaders",
     "rest_framework",
 
-    # Local apps
     "employees",
     "attendance",
 ]
@@ -73,19 +68,20 @@ DATABASES = {
 }
 
 # =========================
-# MongoDB (MongoEngine)
+# MongoDB (DIRECT + FALLBACK)
 # =========================
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME")
-MONGO_DB_URL = os.getenv("MONGO_DB_URL")
 
-if not MONGO_DB_NAME or not MONGO_DB_URL:
-    raise Exception("❌ MongoDB ENV variables not set")
+DEFAULT_MONGO_URL = "mongodb+srv://mohammadmuneefkhankhalil_db_user:48qkc12v128NkipN@cluster0.njp2bis.mongodb.net/hrms_lite?retryWrites=true&w=majority"
+DEFAULT_DB_NAME = "hrms_db"
+
+MONGO_DB_URL = os.getenv("MONGO_DB_URL", DEFAULT_MONGO_URL)
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", DEFAULT_DB_NAME)
 
 connect(
     db=MONGO_DB_NAME,
     host=MONGO_DB_URL,
-    alias="default",          # 🔥 THIS IS THE KEY LINE
-    uuidRepresentation="standard"
+    alias="default",
+    uuidRepresentation="standard",
 )
 
 # =========================
