@@ -8,10 +8,9 @@ from employees.models import Employee
 from .models import Attendance
 
 
-class AttendanceView(APIView):
+class AttendanceCreateView(APIView):
     """
-    POST  -> Mark attendance
-    GET   -> HR: View attendance by date
+    POST -> Mark attendance
     """
 
     def post(self, request):
@@ -19,13 +18,16 @@ class AttendanceView(APIView):
         date_str = request.data.get("date")
         status_value = request.data.get("status", "Present")
 
-        # ---------------- Validation ----------------
+        # -------- Basic validation --------
         if not employee_id or not date_str:
             return Response(
-                {
-                    "success": False,
-                    "message": "employee_id and date are required"
-                },
+                {"success": False, "message": "employee_id and date are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if status_value not in ["Present", "Absent"]:
+            return Response(
+                {"success": False, "message": "Status must be Present or Absent"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -33,122 +35,56 @@ class AttendanceView(APIView):
             date = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
             return Response(
-                {
-                    "success": False,
-                    "message": "Invalid date format (YYYY-MM-DD)"
-                },
+                {"success": False, "message": "Date format must be YYYY-MM-DD"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # ---------------- Employee check ----------------
+        # -------- Employee check --------
         employee = Employee.objects(employee_id=employee_id).first()
         if not employee:
             return Response(
-                {
-                    "success": False,
-                    "message": "Employee not found"
-                },
+                {"success": False, "message": "Employee not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # ---------------- Upsert Attendance ----------------
-        Attendance.objects(
-            employee_id=employee_id,
-            date=date
-        ).update_one(
-            set__status=status_value,
-            set__created_at=now(),
-            upsert=True
-        )
-
-        return Response(
-            {
-                "success": True,
-                "message": "Attendance marked successfully"
-            },
-            status=status.HTTP_201_CREATED
-        )
-
-    def get(self, request):
-        """
-        HR: View attendance by date
-        /api/attendance/?date=YYYY-MM-DD
-        """
-
-        date_str = request.GET.get("date")
-        if not date_str:
+        # -------- Duplicate attendance check --------
+        if Attendance.objects(employee=employee, date=date).first():
             return Response(
                 {
                     "success": False,
-                    "message": "date query param is required"
+                    "message": "Is employee ki aaj attendance already ho chuki hai"
                 },
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_200_OK
             )
 
-        try:
-            date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except ValueError:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Invalid date format (YYYY-MM-DD)"
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        employees = Employee.objects.all()
-        attendance_records = Attendance.objects(
+        # -------- Save attendance --------
+        Attendance(
+            employee=employee,
             date=date,
-            status="Present"
-        )
-
-        present_ids = {att.employee_id for att in attendance_records}
-
-        present = []
-        absent = []
-
-        for emp in employees:
-            emp_data = {
-                "employee_id": emp.employee_id,
-                "full_name": emp.full_name
-            }
-
-            if emp.employee_id in present_ids:
-                present.append(emp_data)
-            else:
-                absent.append(emp_data)
+            status=status_value,
+            created_at=now()
+        ).save()
 
         return Response(
-            {
-                "success": True,
-                "date": date_str,
-                "present": present,
-                "absent": absent
-            },
-            status=status.HTTP_200_OK
+            {"success": True, "message": "Attendance marked successfully"},
+            status=status.HTTP_201_CREATED
         )
 
 
 class AttendanceByEmployeeView(APIView):
     """
-    GET -> Attendance history of a single employee
-    /api/attendance/<employee_id>/
+    GET -> Attendance history of an employee
     """
 
     def get(self, request, employee_id):
         employee = Employee.objects(employee_id=employee_id).first()
         if not employee:
             return Response(
-                {
-                    "success": False,
-                    "message": "Employee not found"
-                },
+                {"success": False, "message": "Employee not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        records = Attendance.objects(
-            employee_id=employee_id
-        ).order_by("-date")
+        records = Attendance.objects(employee=employee).order_by("-date")
 
         data = [
             {
@@ -197,6 +133,48 @@ class AttendanceSummaryView(APIView):
                     "present": present,
                     "absent": absent
                 }
+            },
+            status=status.HTTP_200_OK
+        )
+class AttendanceByDateView(APIView):
+    """
+    GET -> Attendance by date
+    /api/attendance/by-date/?date=YYYY-MM-DD
+    """
+
+    def get(self, request):
+        date_str = request.GET.get("date")
+
+        if not date_str:
+            return Response(
+                {"success": False, "message": "date query param is required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"success": False, "message": "Invalid date format (YYYY-MM-DD)"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        records = Attendance.objects(date=date)
+
+        data = [
+            {
+                "employee_id": a.employee.employee_id,
+                "full_name": a.employee.full_name,
+                "status": a.status
+            }
+            for a in records
+        ]
+
+        return Response(
+            {
+                "success": True,
+                "date": date_str,
+                "data": data
             },
             status=status.HTTP_200_OK
         )
